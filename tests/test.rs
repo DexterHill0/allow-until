@@ -1,5 +1,6 @@
 use allow_until::{allow_until, AllowUntil};
 
+#[allow(unused)]
 #[test]
 fn test() {
     #[derive(AllowUntil)]
