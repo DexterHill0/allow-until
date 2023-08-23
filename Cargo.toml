@@ -11,3 +11,6 @@ authors = ["Dexter Hill <@DexterHill0>"]
 
 [lib]
 proc-macro = true
+
+[dependencies]
+semver = "1.0.18"
