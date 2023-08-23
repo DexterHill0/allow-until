@@ -1,0 +1,13 @@
+[package]
+name = "allow-until"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Allows an item until a specified semver version, and then errors on compilation."
+repository = "https://github.com/DexterHill0/allow-until"
+keywords = ["macros"]
+categories = ["development-tools"]
+authors = ["Dexter Hill <@DexterHill0>"]
+
+[lib]
+proc-macro = true
