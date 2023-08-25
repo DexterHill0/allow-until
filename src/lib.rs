@@ -137,6 +137,55 @@ fn emit_error_version_match(pred: VersionReq, reason: Option<String>, at: Span) 
     }
 }
 
+fn recurse_find_attr(group: Group) {
+    let mut toks = group.stream().into_iter();
+
+    loop {
+        match toks.next() {
+            Some(TT::Group(g)) => recurse_find_attr(g),
+            Some(TT::Punct(hash)) if hash.as_char() == '#' => match toks.next() {
+                Some(TT::Group(inner_g)) => {
+                    let mut toks = inner_g.stream().into_iter();
+
+                    match toks.next() {
+                        Some(TT::Ident(ident)) if &ident.to_string()[..] == "allow_until" => {
+                            match toks.next() {
+                                Some(TT::Group(g)) => {
+                                    let args = parse_arguments(g.stream());
+                                    let args = match args {
+                                        Err(e) => {
+                                            e.emit();
+                                            return;
+                                        }
+                                        Ok(a) => a,
+                                    };
+
+                                    emit_error_version_match(
+                                        args.version,
+                                        args.reason,
+                                        hash.span()
+                                            .join(inner_g.span())
+                                            .unwrap()
+                                            .join(ident.span())
+                                            .unwrap(),
+                                    );
+
+                                    continue;
+                                }
+                                _ => continue,
+                            }
+                        }
+                        _ => continue,
+                    }
+                }
+                _ => continue,
+            },
+            None => break,
+            _ => continue,
+        }
+    }
+}
+
 /// Allows an item until a specified semver version, and then errors on compilation.
 ///
 /// ```rust
@@ -177,52 +226,7 @@ pub fn allow_until_derive(stream: TokenStream) -> TokenStream {
 
     for tok in toks {
         match tok {
-            TT::Group(g) => {
-                let mut gtoks = g.stream().into_iter();
-
-                match gtoks.next() {
-                    Some(TT::Punct(hash)) if hash.as_char() == '#' => match gtoks.next() {
-                        Some(TT::Group(inner_g)) => {
-                            let mut gtoks = inner_g.stream().into_iter();
-
-                            match gtoks.next() {
-                                Some(TT::Ident(ident))
-                                    if &ident.to_string()[..] == "allow_until" =>
-                                {
-                                    match gtoks.next() {
-                                        Some(TT::Group(g)) => {
-                                            let args = parse_arguments(g.stream());
-                                            let args = match args {
-                                                Err(e) => {
-                                                    e.emit();
-                                                    return TokenStream::new();
-                                                }
-                                                Ok(a) => a,
-                                            };
-
-                                            emit_error_version_match(
-                                                args.version,
-                                                args.reason,
-                                                hash.span()
-                                                    .join(inner_g.span())
-                                                    .unwrap()
-                                                    .join(ident.span())
-                                                    .unwrap(),
-                                            );
-
-                                            continue;
-                                        }
-                                        _ => continue,
-                                    }
-                                }
-                                _ => continue,
-                            }
-                        }
-                        _ => continue,
-                    },
-                    _ => continue,
-                }
-            }
+            TT::Group(g) => recurse_find_attr(g),
             _ => continue,
         }
     }
